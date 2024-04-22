@@ -9,33 +9,34 @@ def w(candidate, weights):
     total_weight = np.sum(np.isin(np.arange(len(weights)), list(candidate)) * weights)
     return total_weight
 
-def generate_candidate(values, weights, capacity, randseed, time_cutoff):
-    np.random.seed(randseed)
-    if capacity < np.sum(weights):
-        p = capacity/np.sum(weights)
-    else:
-        return set()
+def generate_candidate(values, weights, capacity):
+    # if capacity >= np.sum(weights):
+    #     p = capacity/np.sum(weights)
+    # else:
+    #     return set()
     candidate = set()
-    time = 0
-    
-    vw_ratio = values*np.reciprocal(weights)
-    coeff = np.square(vw_ratio/np.max(vw_ratio))
-    while time < time_cutoff/5:
-        test_candidate = set()
-        for item in range(len(weights)):
-            if np.random.random() < coeff[item]:
-                test_candidate.add(item)
+    test_candidate = candidate
+
+    vw_ratio = values*np.reciprocal(weights)[np.newaxis, :]
+    indices = np.arange(len(weights))[np.newaxis, :]
+    loop = np.concatenate((vw_ratio, indices), axis = 0)
+
+    for index in loop[:,np.argsort(loop[0,:])][1,:]:
+        # print(index)
+        # print(candidate)
+        test_candidate.add(index)
         weight = w(test_candidate, weights)
-        if capacity > weight:
+        if capacity > weight + weights[index]:
             candidate = test_candidate
+        else:
             break
-        time += 1
+    # print(candidate)
     return candidate
 
 def choose_neighbor(solution, file_inputs):
     num_items, capacity, _, weights = file_inputs
     total_weight = w(solution, weights)
-    
+    # print(weights)
     # Items that can be removed from knapsack
     can_remove = solution
 
@@ -44,6 +45,9 @@ def choose_neighbor(solution, file_inputs):
     add_remove = (can_add.copy(), can_remove.copy())
     items_removed = []
     for item in can_add:
+        # print(capacity)
+        # print(total_weight)
+        # print(weights[item])
         if capacity < total_weight + weights[item]:
             items_removed.append(item)
     for item in items_removed:
@@ -58,6 +62,7 @@ def choose_neighbor(solution, file_inputs):
 
     # Actions constituting entire neighborhood
     neighborhood = can_swap + [[-1, x] for x in can_remove] + [[x, -1] for x in can_add]
+    # print(neighborhood)
     if not neighborhood:
         action = [-1, -1]
     else:
@@ -85,8 +90,7 @@ def LS1(file_inputs, time_cutoff, randseed):
     num_items, capacity, values, weights = file_inputs
     time_passed = 0
 
-    solution = set()
-    # generate_candidate(weights, capacity, randseed, time_cutoff)
+    solution = generate_candidate(values, weights, capacity)
     start_time = timer()
     while time_passed < time_cutoff:
         # Select a random neighbor of our current solution
@@ -100,13 +104,18 @@ def LS1(file_inputs, time_cutoff, randseed):
             if n_solution > vb_solution:
                 cut = 0
                 best_solution = solution
-                trace.append((round(timer()-start_time, 2), vb_solution))
+                trace.append((round(timer()-start_time, 2), n_solution))
         else:
             r = np.random.random()
-            metro = np.exp(neighbor_compare/T_cur)
+            metro = np.exp(neighbor_compare/(capacity*T_cur))
             if r < metro:
                 solution = neighbor
-        if cut % num_items//2 == 0:
+                vb_solution = v(best_solution, values)
+                if n_solution > vb_solution:
+                    cut = 0
+                    best_solution = solution
+                    trace.append((round(timer()-start_time, 2), n_solution))
+        if cut % num_items == 0:
             T_cur *= A
         cut += 1
         end_time = timer()
