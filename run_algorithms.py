@@ -105,6 +105,18 @@ def output(quality:int, index_list, file_name:str, algorithm, time_cutoff, rand_
     f.close()
     return
 
+def trace_out(trace, file_name:str, algorithm, time_cutoff, rand_seed):
+    if algorithm == "BNB":
+        new_file_name = "DATA/DATASET/"+file_name+"_"+algorithm+"_"+time_cutoff+".trace"
+    else:
+        new_file_name = "DATA/DATASET/"+file_name+"_"+algorithm+"_"+time_cutoff+"_"+rand_seed+".trace"
+    f = open(new_file_name, "w")
+    for improve in trace:
+        time, solution = improve
+        f.write(str(time)+", "+str(solution)+"\n")
+    f.close()
+    return
+
 def main():
     '''
     main:   The combination of all previous functions into one unit.
@@ -140,11 +152,12 @@ def main():
         return
     
     # Runs the desired algorithm
-    quality, index_list = run_algorithm(file_inputs, algorithm, int(time_cutoff), int(rand_seed))
+    quality, index_list, trace = run_algorithm(file_inputs, algorithm, int(time_cutoff), int(rand_seed))
     if quality == -1:
         return
     
     output(quality, index_list, filename, algorithm, time_cutoff, rand_seed)
+    trace_out(trace, filename, algorithm, time_cutoff, rand_seed)
     return
 
 # print(sys.argv)
